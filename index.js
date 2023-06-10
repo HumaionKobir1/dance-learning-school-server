@@ -32,6 +32,24 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
 
+    const usersCollection = client.db('danceDb').collection('users')
+    const classesCollection = client.db('danceDb').collection('classes')
+    const bookingsCollection = client.db('danceDb').collection('bookings')
+
+
+
+    app.put('/users/:email', async(req, res) => {
+        const email = req.params.email
+        const user = req.body
+        const filter = {email: email}
+        const options = {upsert: true}
+        const updateDoc = {
+            $set: user
+        }
+        const result = await usersCollection.updateOne(filter, updateDoc, options)
+        console.log(result)
+    })
+
 
 
     // Connect the client to the server	(optional starting in v4.7)

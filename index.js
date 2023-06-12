@@ -3,7 +3,7 @@ const app = express()
 const cors = require('cors')
 require('dotenv').config()
 const port = process.env.PORT || 5000
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 // middleware
@@ -36,25 +36,53 @@ async function run() {
     const classesCollection = client.db('danceDb').collection('classes')
     const bookingsCollection = client.db('danceDb').collection('bookings')
 
-
-
-    app.put('/users/:email', async(req, res) => {
-        const email = req.params.email
-        const user = req.body
-        const filter = {email: email}
-        const options = {upsert: true}
-        const updateDoc = {
-            $set: user
-        }
-        const result = await usersCollection.updateOne(filter, updateDoc, options)
-        console.log(result)
+    // get all users
+    app.get('/users', async(req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
     })
+    
+
+    app.post('/users', async(req, res) => {
+      const user = req.body;
+      console.log(user);
+
+      const query = {email: user.email};
+
+      const existingUser = await usersCollection.findOne(query);
+      console.log('existing user:', existingUser)
+
+      if(existingUser) {
+        return res.send({message: 'user already exists'});
+      }
+
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    })
+
+
+     app.patch('/users/admin/:id', async(req, res) => {
+      const id = req.params.id;
+      console.log(id)
+      const filter = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          role: 'admin'
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    })
+
+    
 
     // get all classes
     app.get('/classes', async(req, res) => {
       const result = await classesCollection.find().toArray()
       res.send(result)
     })
+
+  
 
     // save class data in database
     app.post('/classes', async (req, res) => {

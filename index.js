@@ -4,6 +4,8 @@ const cors = require('cors')
 require('dotenv').config()
 const port = process.env.PORT || 5000
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
+
 
 
 // middleware
@@ -34,7 +36,16 @@ async function run() {
 
     const usersCollection = client.db('danceDb').collection('users')
     const classesCollection = client.db('danceDb').collection('classes')
-    const bookingsCollection = client.db('danceDb').collection('bookings')
+    const enrolCollection = client.db('danceDb').collection('bookings')
+
+
+    app.post('/jwt', (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: '1h'
+      })
+      res.send({token})
+    })
 
     // get all users
     app.get('/users', async(req, res) => {

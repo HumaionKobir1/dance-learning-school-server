@@ -17,7 +17,23 @@ const corsOptions = {
 app.use(cors(corsOptions))
 app.use(express.json())
 
+// verifyJWT
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if(!authorization){
+    return res.status(401).send({error: true, message: 'unauthorized access'});
+  }
 
+  // bearer token
+  const token = authorization.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if(err){
+      return res.status(403).send({error: true, message: 'unauthorized access'})
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4hywmoi.mongodb.net/?retryWrites=true&w=majority`;
@@ -36,7 +52,7 @@ async function run() {
 
     const usersCollection = client.db('danceDb').collection('users')
     const classesCollection = client.db('danceDb').collection('classes')
-    const enrolCollection = client.db('danceDb').collection('bookings')
+    const enrollCollection = client.db('danceDb').collection('bookings')
 
 
     app.post('/jwt', (req, res) => {
@@ -116,6 +132,28 @@ async function run() {
       res.send(result)
     })
 
+
+
+
+    // enrol collection
+
+    app.get('/enroll', async(req, res) => {
+      const email = req.query.email;
+      console.log(email)
+      if(!email){
+        res.send([])
+      }
+      const query = {email: email}
+      const result = await enrollCollection.find(query).toArray();
+      res.send(result);
+    })
+
+
+    app.post('/enroll', async(req, res) => {
+      const item = req.body;
+      const result = await enrollCollection.insertOne(item)
+      res.send(result)
+    })
 
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();

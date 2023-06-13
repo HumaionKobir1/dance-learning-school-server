@@ -18,6 +18,23 @@ app.use(cors(corsOptions))
 app.use(express.json())
 
 
+// verifyJWT
+const verifyJWT = (req, res, next) => {
+  const authorization = req.headers.authorization;
+  if(!authorization){
+    return res.status(401).send({error: true, message: 'unauthorized access'});
+  }
+
+  // bearer token
+  const token = authorization.split(' ')[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+    if(err){
+      return res.status(403).send({error: true, message: 'unauthorized access'})
+    }
+    req.decoded = decoded;
+    next();
+  })
+}
 
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.4hywmoi.mongodb.net/?retryWrites=true&w=majority`;
@@ -72,6 +89,18 @@ async function run() {
     })
 
 
+    
+     // Get user
+    app.get('/users/:email', async (req, res) => {
+      const email = req.params.email
+      const query = { email: email }
+      const result = await usersCollection.findOne(query)
+      console.log(result)
+      res.send(result)
+    })
+
+
+// make admin
      app.patch('/users/admin/:id', async(req, res) => {
       const id = req.params.id;
       console.log(id)
@@ -85,6 +114,8 @@ async function run() {
       res.send(result);
     })
 
+
+    // make instructor
      app.patch('/users/instructor/:id', async(req, res) => {
       const id = req.params.id;
       console.log(id)
@@ -121,11 +152,16 @@ async function run() {
 
     // enrol collection
 
-    app.get('/enroll', async(req, res) => {
+    app.get('/enroll', verifyJWT, async(req, res) => {
       const email = req.query.email;
       console.log(email)
       if(!email){
         res.send([])
+      }
+
+      const decodedEmail = req.decoded.email;
+      if(email !== decodedEmail){
+        return res.status(403).send({error: true, message: 'forbidden access'})
       }
       const query = {email: email}
       const result = await enrollCollection.find(query).toArray();

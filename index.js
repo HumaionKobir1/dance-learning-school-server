@@ -69,6 +69,14 @@ async function run() {
       const result = await usersCollection.find().toArray();
       res.send(result);
     })
+
+
+    // get all instructor
+    app.get('/instructor', async(req, res) => {
+      const filter = {role: "instructor"}
+      const result = await usersCollection.find(filter).toArray()
+      res.send(result)
+    })
     
 
     app.post('/users', async(req, res) => {

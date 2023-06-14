@@ -1,6 +1,8 @@
 const express = require('express')
 const app = express()
 const cors = require('cors')
+const Stripe = require('stripe');
+const stripe = Stripe('sk_test_51NETPuB9B9Ycv5F96oMYC9MaZuGESrSUo0ZqDML87S8EmvALvx3fceh4RLKkWcgizQYHASnkhC8noWxHaaxDq9kp00Sr4nREaU');
 require('dotenv').config()
 const port = process.env.PORT || 5000
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
@@ -29,7 +31,8 @@ const verifyJWT = (req, res, next) => {
   const token = authorization.split(' ')[1];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if(err){
-      return res.status(403).send({error: true, message: 'unauthorized access'})
+      return res.status(401)
+      .send({error: true, message: 'unauthorized access'})
     }
     req.decoded = decoded;
     next();
@@ -56,6 +59,34 @@ async function run() {
     const enrollCollection = client.db('danceDb').collection('bookings')
 
 
+    // create payment intent
+    app.post('/create-payment-intent', verifyJWT, async (req, res) => {
+      const { price } = req.body;
+      const amount = parseInt(price * 100);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: 'usd',
+        payment_method_types: ['card']
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret
+      })
+    })
+
+    // payment related api
+    app.post('/payments', verifyJWT, async (req, res) => {
+      const payment = req.body;
+      const insertResult = await paymentCollection.insertOne(payment);
+
+      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
+      const deleteResult = await cartCollection.deleteMany(query)
+
+      res.send({ insertResult, deleteResult });
+    })
+
+
+// generate jwt token
     app.post('/jwt', (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
@@ -146,6 +177,17 @@ async function run() {
     })
 
   
+    // get all classes for instructor
+    app.get('/classes/:email', verifyJWT,  async(req, res) => {
+      const email = req.params.email;
+      const decodedEmail = req.decoded.email;
+      if(email !== decodedEmail){
+        return res.status(403).send({error: true, message: 'forbidden access'})
+      }
+      const query = {'host.email': email}
+      const result = await classesCollection.find(query).toArray()
+      res.send(result);
+    })
 
     // save class data in database
     app.post('/classes', async (req, res) => {

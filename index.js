@@ -148,6 +148,39 @@ async function run() {
     })
 
 
+    // update class booking status
+    app.patch('/classes/status/:id', async(req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      const query = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          enroll: status,
+        },
+      }
+      const update = await classesCollection.updateOne(query, updateDoc)
+        res.send(update)
+    })
+
+    app.patch('/classes/admin/status/:id', async(req, res) => {
+      const id = req.params.id;
+      const status = req.body.status;
+      const query = {_id: new ObjectId(id)};
+      const updateDoc = {
+        $set: {
+          status: status,
+        },
+      }
+      const update = await classesCollection.updateOne(query, updateDoc)
+        res.send(update)
+    })
+
+
+
+
+
+    
+
 
 
     // enrol collection

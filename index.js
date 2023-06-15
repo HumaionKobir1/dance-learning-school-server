@@ -57,6 +57,7 @@ async function run() {
     const usersCollection = client.db('danceDb').collection('users')
     const classesCollection = client.db('danceDb').collection('classes')
     const enrollCollection = client.db('danceDb').collection('bookings')
+    const paymentsCollection = client.db('danceDb').collection('payments')
 
 
     // create payment intent
@@ -77,12 +78,31 @@ async function run() {
     // payment related api
     app.post('/payments', verifyJWT, async (req, res) => {
       const payment = req.body;
-      const insertResult = await paymentCollection.insertOne(payment);
+      const insertResult = await paymentsCollection.insertOne(payment);
 
-      const query = { _id: { $in: payment.cartItems.map(id => new ObjectId(id)) } }
-      const deleteResult = await cartCollection.deleteMany(query)
+      const query = { _id: { $in: payment.classCartItems.map(id => new ObjectId(id)) } }
+      const deleteResult = await enrollCollection.deleteMany(query)
 
       res.send({ insertResult, deleteResult });
+    })
+
+
+    app.get('/payment/:email', verifyJWT,  async(req, res) => {
+      const email = req.params.email;
+      console.log(email)
+      const decodedEmail = req.decoded.email;
+      console.log(decodedEmail)
+      if(email !== decodedEmail){
+        return res.status(403).send({error: true, message: 'forbidden access'})
+      }
+      const query = {email : email}
+      const result = await paymentsCollection.find(query).toArray()
+      res.send(result);
+    })
+
+    app.get('/payment', async(req, res) => {
+      const result = await paymentsCollection.find().toArray();
+      res.send(result);
     })
 
 
@@ -138,6 +158,13 @@ async function run() {
       res.send(result)
     })
 
+    app.delete('/users/:id', async(req, res) => {
+      const id = req.params.id;
+      console.log(id)
+      const query = {_id: new ObjectId(id)}
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    })
 
 // make admin
      app.patch('/users/admin/:id', async(req, res) => {
@@ -175,6 +202,8 @@ async function run() {
       const result = await classesCollection.find().toArray()
       res.send(result)
     })
+
+    
 
   
     // get all classes for instructor
